@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>APNG / GIF 动图调色工具</title>
+<title>PNG / GIF / WebP 动图调色工具</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { height: 100%; }
@@ -16,7 +16,7 @@
     flex-direction: column;
   }
   body.dragover::after {
-    content: "松开鼠标即可载入 APNG";
+    content: "松开鼠标即可载入 PNG / GIF / WebP";
     position: fixed; inset: 0; z-index: 99;
     display: flex; align-items: center; justify-content: center;
     background: rgba(34, 211, 238, 0.12);
@@ -45,8 +45,8 @@
   }
   header button:hover { background: #67e8f9; }
 
-  main { flex: 1; display: flex; align-items: stretch; justify-content: center; gap: 24px; padding: 24px; }
-  @media (max-width: 860px) { main { flex-direction: column; align-items: center; } }
+  main { flex: 1; display: flex; align-items: center; justify-content: center; gap: 24px; padding: 24px; overflow: auto; }
+  @media (max-width: 900px) { main { align-items: flex-start; } }
 
   /* ---------- 上传态 ---------- */
   #dropzone {
@@ -63,15 +63,26 @@
   #dropzone .t2 b { color: #94a3b8; font-weight: 500; }
 
   /* ---------- 工作态 ---------- */
-  #workspace { display: none; width: 100%; max-width: 1080px; gap: 24px; }
+  #workspace {
+    display: none;
+    width: 1244px;
+    flex: 0 0 1244px;
+    grid-template-columns: 860px 360px;
+    gap: 24px;
+    align-items: stretch;
+  }
   body.loaded #dropzone { display: none; }
-  body.loaded #workspace { display: flex; }
+  body.loaded #workspace { display: grid; }
+  body:not(.loaded) #openBtn { visibility: hidden; }
 
   .panel {
     background: #171c22; border: 1px solid #262d36; border-radius: 14px;
     padding: 18px;
   }
-  #previewPanel { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  #previewPanel {
+    width: 860px; height: 720px;
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+  }
   #stageWrap {
     position: relative;
     background-image:
@@ -83,9 +94,13 @@
     border-radius: 10px;
     border: 1px solid #262d36;
     display: flex; align-items: center; justify-content: center;
-    max-width: 100%;
+    width: 822px; height: 638px;
+    max-width: 100%; overflow: hidden;
   }
-  #glcanvas { display: block; max-width: 100%; height: auto; image-rendering: auto; cursor: pointer; }
+  #glcanvas {
+    display: block; max-width: 100%; max-height: 100%; width: auto; height: auto;
+    image-rendering: auto; cursor: pointer;
+  }
   #stageHint {
     position: absolute; top: 8px; left: 10px;
     font-size: 11px; color: #64748b; background: rgba(15,18,22,.7);
@@ -100,7 +115,13 @@
   #playBtn:hover { border-color: #22d3ee; color: #22d3ee; }
   #frameInfo { font-size: 13px; color: #94a3b8; font-variant-numeric: tabular-nums; }
 
-  #ctrlPanel { flex: 1; min-width: 320px; display: flex; flex-direction: column; gap: 18px; }
+  #ctrlPanel { width: 360px; height: 720px; display: flex; flex-direction: column; gap: 18px; }
+  @media (max-width: 900px) {
+    #workspace { width: 100%; flex: 0 0 auto; grid-template-columns: minmax(0, 1fr); }
+    #previewPanel, #ctrlPanel { width: min(100%, 860px); height: auto; min-height: 720px; }
+    #stageWrap { width: 100%; height: min(638px, 70vh); }
+    #ctrlPanel { min-height: 0; }
+  }
   .sectionTitle { font-size: 12px; color: #64748b; letter-spacing: 1px; font-weight: 600; }
 
   .sliderRow { display: flex; flex-direction: column; gap: 6px; }
@@ -197,10 +218,10 @@
 <header>
   <div class="logo">
     <span class="dot"></span>
-    <span>APNG / GIF 动图调色工具</span>
+    <span>PNG / GIF / WebP 动图调色工具</span>
   </div>
-  <button id="openBtn">打开文件</button>
-  <input type="file" id="fileInput" accept=".png,.gif,image/png,image/gif" hidden>
+  <button id="openBtn">返回</button>
+  <input type="file" id="fileInput" accept=".png,.apng,.gif,.webp,image/png,image/apng,image/gif,image/webp" hidden>
 </header>
 
 <main>
@@ -208,8 +229,8 @@
     <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
       <path d="21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
     </svg>
-    <div class="t1">拖入 APNG / GIF 动图，或点击选择文件</div>
-    <div class="t2">支持 <b>APNG</b> / <b>GIF</b> 动图与普通 PNG · 帧数 / 帧率 / 透明度完整保留</div>
+    <div class="t1">拖入 PNG / GIF / WebP 动图，或点击选择文件</div>
+    <div class="t2">支持 <b>PNG</b> / <b>GIF</b> / <b>WebP</b> 动图与静态 PNG / WebP · 保留帧数与帧时序</div>
   </div>
 
   <div id="workspace">
@@ -242,6 +263,11 @@
           <div class="lab"><span>明度</span><span class="val" id="valVal">0%</span></div>
           <input type="range" id="valSlider" min="-100" max="100" step="1" value="0">
         </div>
+        <div style="height:14px"></div>
+        <div class="sliderRow">
+          <div class="lab"><label for="contrastSlider">对比度</label><span class="val" id="contrastVal">0%</span></div>
+          <input type="range" id="contrastSlider" min="-100" max="100" step="1" value="0">
+        </div>
       </div>
 
       <div>
@@ -260,14 +286,22 @@
       <div class="fmtRow">
         <span class="fmtLab">导出格式</span>
         <div class="seg">
-          <button type="button" class="segBtn on" id="fmtApng">APNG</button>
+          <button type="button" class="segBtn on" id="fmtApng">PNG</button>
           <button type="button" class="segBtn" id="fmtGif">GIF</button>
+          <button type="button" class="segBtn" id="fmtWebp">WebP</button>
         </div>
       </div>
       <label class="chk" id="quantChkRow"><input type="checkbox" id="quantChk">量化压缩导出（体积更小，色彩精度略降）</label>
       <div id="gifHint" class="hint" style="display:none">GIF 固定 256 色量化，透明仅支持全透 / 不透</div>
+      <div id="webpOptions" style="display:none">
+        <div class="sliderRow">
+          <div class="lab"><label for="webpQuality">WebP 导出质量</label><span class="val" id="webpQualityVal">90%</span></div>
+          <input type="range" id="webpQuality" min="1" max="100" step="1" value="90">
+        </div>
+        <div class="hint" style="margin-top:8px;margin-bottom:0">有损压缩，质量越高体积越大；保留动画时序与透明度。不支持 WebP 编码的浏览器可改用 PNG 导出。</div>
+      </div>
 
-      <button class="btn primary" id="exportBtn">导出 APNG</button>
+      <button class="btn primary" id="exportBtn">导出 PNG</button>
       <div id="exportBar">
         <div class="track"><div class="fill" id="exportFill"></div></div>
         <div class="txt" id="exportTxt"></div>
@@ -312,8 +346,12 @@ UPNG.toRGBA8 = function(out)
 		var frm = out.frames[i];
 		var fx=frm.rect.x, fy=frm.rect.y, fw = frm.rect.width, fh = frm.rect.height;
 		var fdata = UPNG.toRGBA8.decodeImage(frm.data, fw,fh, out);
+		// 保存当前帧绘制前的画布，disposal=2 要恢复到这个状态。
+		var before = i==0 ? empty.slice(0) : img.slice(0);
 		
-		if(i==0) img = fdata;
+		if(i==0) img = new Uint8Array(empty);
+		if(i==0 && frm.blend==0) UPNG._copyTile(fdata, fw, fh, img, w, h, fx, fy, 0);
+		else if(i==0 && frm.blend==1) UPNG._copyTile(fdata, fw, fh, img, w, h, fx, fy, 1);
 		else if(frm.blend  ==0) UPNG._copyTile(fdata, fw, fh, img, w, h, fx, fy, 0);
 		else if(frm.blend  ==1) UPNG._copyTile(fdata, fw, fh, img, w, h, fx, fy, 1);
 		
@@ -321,11 +359,7 @@ UPNG.toRGBA8 = function(out)
 		
 		if     (frm.dispose==0) {}
 		else if(frm.dispose==1) UPNG._copyTile(empty, fw, fh, img, w, h, fx, fy, 0);
-		else if(frm.dispose==2) {
-			var pi = i-1;
-			while(out.frames[pi].dispose==2) pi--;
-			img = new Uint8Array(frms[pi]).slice(0);
-		}
+		else if(frm.dispose==2) img = before;
 	}
 	return frms;
 }
@@ -671,12 +705,15 @@ UPNG.encode = function(bufs, w, h, ps, dels, forbidPlte)
 {
 	if(ps==null) ps=0;
 	if(forbidPlte==null) forbidPlte = false;
-	var data = new Uint8Array(bufs[0].byteLength*bufs.length+100);
+	var nimg = UPNG.encode.compressPNG(bufs, w, h, ps, forbidPlte);
+	// 按实际数据块大小分配，避免小尺寸动图的帧头 / 调色板超出缓冲区。
+	var size = 8 + 25 + 13 + 12 + (bufs.length > 1 ? 20 : 0);
+	if(nimg.ctype==3) size += 12 + nimg.plte.length*3 + (nimg.gotAlpha ? 12+nimg.plte.length : 0);
+	for(var j=0; j<nimg.frames.length; j++) size += (bufs.length>1 ? 38 : 0) + (j==0 ? 12 : 16) + nimg.frames[j].cimg.length;
+	var data = new Uint8Array(size);
 	var wr=[0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 	for(var i=0; i<8; i++) data[i]=wr[i];
 	var offset = 8,  bin = UPNG._bin, crc = UPNG.crc.crc, wUi = bin.writeUint, wUs = bin.writeUshort, wAs = bin.writeASCII;
-
-	var nimg = UPNG.encode.compressPNG(bufs, w, h, ps, forbidPlte);
 
 	wUi(data,offset, 13);     offset+=4;
 	wAs(data,offset,"IHDR");  offset+=4;
@@ -1921,10 +1958,11 @@ try { exports.GifWriter = GifWriter; exports.GifReader = GifReader } catch(e) {}
 /* ================= 状态 ================= */
 const S = {
   fileName: "", frames: [], delays: [], w: 0, h: 0,
-  format: "apng", exportFmt: "apng",
+  format: "apng", exportFmt: "apng", loopCount: 0,
+  loadId: 0, exporting: false,
   curFrame: 0, playing: true, nextTime: 0,
   dominantHue: 0,            // 0~1
-  hue: 0, sat: 0, val: 0,    // 滑条值：度 / % / %
+  hue: 0, sat: 0, val: 0, contrast: 0, // 滑条值：度 / % / % / %
   comparing: false,
 };
 
@@ -1946,6 +1984,7 @@ uniform sampler2D uTex;
 uniform float uHueShift;  // 0~1 循环偏移
 uniform float uSatMul;    // 0~2
 uniform float uValAdj;    // -1~1
+uniform float uContrast;  // 0~2，1 = 原始对比度
 uniform float uBinAlpha;  // 1 = GIF 透明度二值化预览
 vec3 rgb2hsv(vec3 c){
   vec4 K = vec4(0.0, -1.0/3.0, 2.0/3.0, -1.0);
@@ -1966,6 +2005,7 @@ void main(){
   hsv.y = clamp(hsv.y * uSatMul, 0.0, 1.0);
   hsv.z = uValAdj >= 0.0 ? hsv.z + uValAdj * (1.0 - hsv.z) : hsv.z * (1.0 + uValAdj);
   vec3 rgb = hsv2rgb(hsv);
+  rgb = clamp((rgb - 0.5) * uContrast + 0.5, 0.0, 1.0);
   float a = uBinAlpha > 0.5 ? (px.a < 0.5 ? 0.0 : 1.0) : px.a;
   if (a <= 0.0) rgb = vec3(0.0);   // 全透明像素输出黑，利于压缩
   gl_FragColor = vec4(rgb, a);
@@ -2008,6 +2048,7 @@ function initGL(){
   U.uHueShift = gl.getUniformLocation(prog, "uHueShift");
   U.uSatMul   = gl.getUniformLocation(prog, "uSatMul");
   U.uValAdj   = gl.getUniformLocation(prog, "uValAdj");
+  U.uContrast = gl.getUniformLocation(prog, "uContrast");
   U.uBinAlpha = gl.getUniformLocation(prog, "uBinAlpha");
 
   tex = gl.createTexture();
@@ -2032,14 +2073,16 @@ function uploadFrame(idx){
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, S.w, S.h, 0, gl.RGBA, gl.UNSIGNED_BYTE, S.frames[idx]);
 }
 
-function uniforms(){
-  const hu = S.comparing ? 0 : S.hue / 360;
-  const sm = S.comparing ? 1 : 1 + S.sat / 100;
-  const va = S.comparing ? 0 : S.val / 100;
+function uniforms(state = S){
+  const hu = state.comparing ? 0 : state.hue / 360;
+  const sm = state.comparing ? 1 : 1 + state.sat / 100;
+  const va = state.comparing ? 0 : state.val / 100;
+  const contrast = state.comparing ? 1 : 1 + state.contrast / 100;
   gl.uniform1f(U.uHueShift, hu);
   gl.uniform1f(U.uSatMul, sm);
   gl.uniform1f(U.uValAdj, va);
-  gl.uniform1f(U.uBinAlpha, S.comparing ? 0 : (S.exportFmt === "gif" ? 1 : 0));
+  gl.uniform1f(U.uContrast, contrast);
+  gl.uniform1f(U.uBinAlpha, state.comparing ? 0 : (state.exportFmt === "gif" ? 1 : 0));
 }
 
 function render(idx){
@@ -2064,26 +2107,51 @@ function loop(t){
 
 /* ================= 文件载入 ================= */
 function loadFile(file){
-  if (!file) return;
-  if (!/\.(png|gif)$/i.test(file.name) && file.type !== "image/png" && file.type !== "image/gif") {
-    toast("请选择 PNG / APNG / GIF 文件", true); return;
+  if (!file || S.exporting) return;
+  if (!/\.(png|apng|gif|webp)$/i.test(file.name) && !["image/png", "image/apng", "image/gif", "image/webp"].includes(file.type)) {
+    toast("请选择 PNG / GIF / WebP 文件", true); return;
   }
+  const loadId = ++S.loadId;
   const rd = new FileReader();
-  rd.onload = () => {
-    try { decodeBuffer(rd.result, file.name); }
-    catch (e) { console.error(e); toast("文件解析失败：" + e.message, true); }
+  rd.onload = async () => {
+    if (loadId !== S.loadId) return;
+    try { await decodeBuffer(rd.result, file.name, loadId); }
+    catch (e) { if (loadId === S.loadId) { console.error(e); toast("文件解析失败：" + e.message, true); } }
   };
+  rd.onerror = () => { if (loadId === S.loadId) toast("文件读取失败，请重试", true); };
   rd.readAsArrayBuffer(file);
 }
 
-function decodeBuffer(buf, name){
+function returnToUpload(){
+  S.loadId++;
+  S.exporting = false;
+  S.playing = false;
+  S.comparing = false;
+  S.frames = []; S.delays = [];
+  S.fileName = ""; S.w = 0; S.h = 0; S.curFrame = 0;
+  S.hue = 0; S.sat = 0; S.val = 0; S.contrast = 0;
+  for (const key of ["hue", "sat", "val", "contrast"]) $(key + "Slider").value = 0;
+  refreshLabels();
+  $("frameInfo").textContent = "0 / 0";
+  $("metaInfo").textContent = "";
+  $("exportBar").style.display = "none";
+  $("fileInput").value = "";
+  document.body.classList.remove("loaded");
+}
+
+async function decodeBuffer(buf, name, loadId = S.loadId){
   const bytes = new Uint8Array(buf);
+  if (isWebP(bytes)) {
+    toast("正在解码 WebP…");
+    await decodeWebP(buf, name, loadId);
+    return;
+  }
   if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46) {  // "GIF"
     decodeGIF(buf, name);
     return;
   }
   if (!(bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47))
-    throw new Error("不是有效的 PNG / GIF 文件");
+    throw new Error("不是有效的 PNG / GIF / WebP 文件");
 
   const img = UPNG.decode(buf);
   const frames = UPNG.toRGBA8(img).map(b => new Uint8Array(b));
@@ -2123,12 +2191,151 @@ function decodeGIF(buf, name){
   finishLoad(name, "gif", frames, delays, w, h);
 }
 
-function finishLoad(name, format, frames, delays, w, h){
-  S.fileName = name.replace(/\.(png|gif)$/i, "");
+/* WebP 容器：浏览器解码各静态帧，按 ANMF 的位置、混合和清除标记合成。 */
+function webpFourCC(bytes, offset){
+  return String.fromCharCode(...bytes.subarray(offset, offset + 4));
+}
+
+function isWebP(bytes){
+  return bytes.length >= 12 && webpFourCC(bytes, 0) === "RIFF" && webpFourCC(bytes, 8) === "WEBP";
+}
+
+function readWebPU24(bytes, offset){
+  return bytes[offset] + bytes[offset + 1] * 256 + bytes[offset + 2] * 65536;
+}
+
+function writeWebPU24(bytes, offset, value){
+  bytes[offset] = value; bytes[offset + 1] = value >>> 8; bytes[offset + 2] = value >>> 16;
+}
+
+function webpChunks(bytes, start, end){
+  const chunks = [];
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  while (start < end) {
+    if (start + 8 > end) throw new Error("WebP 数据块头不完整");
+    const size = view.getUint32(start + 4, true);
+    const next = start + 8 + size + (size & 1);
+    if (next > end) throw new Error("WebP 数据块被截断");
+    chunks.push({ type: webpFourCC(bytes, start), data: bytes.subarray(start + 8, start + 8 + size), raw: bytes.subarray(start, next) });
+    start = next;
+  }
+  return chunks;
+}
+
+function parseWebP(bytes){
+  if (!isWebP(bytes)) throw new Error("不是有效的 WebP 文件");
+  const end = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint32(4, true) + 8;
+  if (end < 12 || end > bytes.length || (end & 1)) throw new Error("WebP 文件长度无效或数据被截断");
+  return webpChunks(bytes, 12, end);
+}
+
+function makeWebPChunk(type, payload){
+  const chunk = new Uint8Array(8 + payload.length + (payload.length & 1));
+  for (let i = 0; i < 4; i++) chunk[i] = type.charCodeAt(i);
+  new DataView(chunk.buffer).setUint32(4, payload.length, true);
+  chunk.set(payload, 8);
+  return chunk;
+}
+
+function makeWebPFile(chunks){
+  const size = 12 + chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+  if (size > 0xfffffffe) throw new Error("WebP 文件超过格式大小限制");
+  const bytes = new Uint8Array(size);
+  bytes.set([82, 73, 70, 70], 0); bytes.set([87, 69, 66, 80], 8);
+  new DataView(bytes.buffer).setUint32(4, size - 8, true);
+  let offset = 12;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
+  return bytes;
+}
+
+function makeWebPExtendedHeader(w, h, flags){
+  const data = new Uint8Array(10);
+  data[0] = flags;
+  writeWebPU24(data, 4, w - 1); writeWebPU24(data, 7, h - 1);
+  return makeWebPChunk("VP8X", data);
+}
+
+async function readWebPBitmap(blob){
+  if (typeof createImageBitmap === "function") return createImageBitmap(blob);
+  const url = URL.createObjectURL(blob);
+  try {
+    const image = new Image();
+    await new Promise((resolve, reject) => {
+      image.onload = resolve;
+      image.onerror = () => reject(new Error("当前浏览器无法解码 WebP，请使用支持 WebP 的浏览器"));
+      image.src = url;
+    });
+    return image;
+  } finally { URL.revokeObjectURL(url); }
+}
+
+async function decodeWebP(buf, name, loadId){
+  const bytes = new Uint8Array(buf);
+  const chunks = parseWebP(bytes);
+  const extended = chunks.find(c => c.type === "VP8X");
+  if (extended && extended.data.length < 10) throw new Error("WebP 扩展头不完整");
+  const animated = extended && (extended.data[0] & 2);
+  const stage = document.createElement("canvas");
+  const ctx = stage.getContext("2d", { willReadFrequently: true });
+  if (!ctx) throw new Error("无法创建 WebP 解码画布");
+  if (!animated) {
+    const bitmap = await readWebPBitmap(new Blob([bytes], { type: "image/webp" }));
+    try {
+      if (loadId !== S.loadId) return;
+      stage.width = bitmap.width; stage.height = bitmap.height;
+      ctx.drawImage(bitmap, 0, 0);
+      const frame = new Uint8Array(ctx.getImageData(0, 0, stage.width, stage.height).data);
+      finishLoad(name, "webp", [frame], [33], stage.width, stage.height);
+    } finally { if (bitmap.close) bitmap.close(); }
+    return;
+  }
+
+  const w = readWebPU24(extended.data, 4) + 1, h = readWebPU24(extended.data, 7) + 1;
+  const anim = chunks.find(c => c.type === "ANIM");
+  const frameChunks = chunks.filter(c => c.type === "ANMF");
+  if (!anim || anim.data.length !== 6 || !frameChunks.length) throw new Error("WebP 动画控制数据不完整");
+  if (w * h > 0xffffffff) throw new Error("WebP 画布尺寸无效");
+  const loopCount = anim.data[4] | (anim.data[5] << 8);
+  const profile = chunks.find(c => c.type === "ICCP");
+  stage.width = w; stage.height = h;
+  const frames = [], delays = [];
+  // 与浏览器显示透明动图一致，使用透明背景合成，不把 ANIM 背景提示烘焙进透明像素。
+  for (const chunk of frameChunks) {
+    if (loadId !== S.loadId) return;
+    const data = chunk.data;
+    if (data.length < 16) throw new Error("WebP 动画帧头不完整");
+    const x = readWebPU24(data, 0) * 2, y = readWebPU24(data, 3) * 2;
+    const fw = readWebPU24(data, 6) + 1, fh = readWebPU24(data, 9) + 1;
+    if (x + fw > w || y + fh > h) throw new Error("WebP 动画帧超出画布");
+    const parts = webpChunks(data, 16, data.length).filter(c => ["ALPH", "VP8 ", "VP8L"].includes(c.type));
+    if (parts.filter(c => c.type === "VP8 " || c.type === "VP8L").length !== 1) throw new Error("WebP 动画帧缺少有效图像数据");
+    const frameFile = makeWebPFile([
+      makeWebPExtendedHeader(fw, fh, (profile ? 32 : 0) | 16),
+      ...(profile ? [profile.raw] : []), ...parts.map(c => c.raw),
+    ]);
+    const bitmap = await readWebPBitmap(new Blob([frameFile], { type: "image/webp" }));
+    try {
+      if (loadId !== S.loadId) return;
+      if (bitmap.width !== fw || bitmap.height !== fh) throw new Error("WebP 动画帧尺寸与图像数据不符");
+      if (data[15] & 2) ctx.clearRect(x, y, fw, fh); // 不混合：覆盖原矩形，含透明像素
+      ctx.drawImage(bitmap, x, y);
+      frames.push(new Uint8Array(ctx.getImageData(0, 0, w, h).data));
+      delays.push(readWebPU24(data, 12));
+      if (data[15] & 1) ctx.clearRect(x, y, fw, fh);
+    } finally { if (bitmap.close) bitmap.close(); }
+  }
+  if (loadId === S.loadId) finishLoad(name, "webp", frames, delays, w, h, loopCount);
+}
+
+function finishLoad(name, format, frames, delays, w, h, loopCount = 0){
+  S.fileName = name.replace(/\.(png|apng|gif|webp)$/i, "");
   S.format = format; S.exportFmt = format;
+  S.loopCount = loopCount;
   S.frames = frames; S.delays = delays;
   S.w = w; S.h = h;
-  S.curFrame = 0; S.playing = true;
+  S.curFrame = 0; S.playing = true; S.comparing = false;
+  S.nextTime = performance.now() + (delays[0] || 33);
+  $("playBtn").textContent = "⏸";
 
   canvas.width = w; canvas.height = h;
   S.dominantHue = detectDominantHue();
@@ -2139,7 +2346,7 @@ function finishLoad(name, format, frames, delays, w, h){
   refreshExportUI();
   render(0);
   updateFrameInfo();
-  toast(`已载入：${frames.length} 帧 · ${w}×${h} · ${format === "gif" ? "GIF" : "APNG"}`);
+  toast(`已载入：${frames.length} 帧 · ${w}×${h} · ${format === "webp" ? "WebP" : format.toUpperCase()}`);
 }
 
 /* 主色相检测：不透明有色像素的色相向量平均（alpha×饱和度 加权） */
@@ -2177,9 +2384,10 @@ function renderMeta(){
   const fps = Math.round(1000 / (S.delays[0] || 33));
   const dh = Math.round(S.dominantHue * 360);
   const anim = S.frames.length > 1;
+  const loopInfo = S.format === "webp" && S.loopCount ? `循环 ${S.loopCount} 次` : "无限循环";
   $("metaInfo").innerHTML =
-    `文件：<b>${escapeHtml(S.fileName)}.${S.format === "gif" ? "gif" : "png"}</b><br>` +
-    `规格：<b>${S.w} × ${S.h}</b> · <b>${S.frames.length}</b> 帧${anim ? ` · 约 <b>${fps}</b> fps · 无限循环` : "（静态图）"}<br>` +
+    `文件：<b>${escapeHtml(S.fileName)}.${S.format === "apng" ? "png" : S.format}</b><br>` +
+    `规格：<b>${S.w} × ${S.h}</b> · <b>${S.frames.length}</b> 帧${anim ? ` · 约 <b>${fps}</b> fps · ${loopInfo}` : "（静态图）"}<br>` +
     `检测主色相：<span class="domhue">${dh}°（${hueName(dh)}）</span>`;
 }
 
@@ -2227,6 +2435,7 @@ function refreshLabels(){
   $("hueVal").textContent = (S.hue > 0 ? "+" : "") + S.hue + "°";
   $("satVal").textContent = (S.sat > 0 ? "+" : "") + S.sat + "%";
   $("valVal").textContent = (S.val > 0 ? "+" : "") + S.val + "%";
+  $("contrastVal").textContent = (S.contrast > 0 ? "+" : "") + S.contrast + "%";
 }
 
 function updateFrameInfo(){
@@ -2234,7 +2443,7 @@ function updateFrameInfo(){
 }
 
 function togglePlay(){
-  if (S.frames.length <= 1) return;
+  if (S.exporting || S.frames.length <= 1) return;
   S.playing = !S.playing;
   $("playBtn").textContent = S.playing ? "⏸" : "▶";
   if (S.playing) S.nextTime = performance.now();
@@ -2262,11 +2471,14 @@ function flipRows(src){
 /* 导出格式切换的界面状态 */
 function refreshExportUI(){
   const isGif = S.exportFmt === "gif";
-  $("fmtApng").classList.toggle("on", !isGif);
+  const isWebp = S.exportFmt === "webp";
+  $("fmtApng").classList.toggle("on", S.exportFmt === "apng");
   $("fmtGif").classList.toggle("on", isGif);
-  $("quantChkRow").style.display = isGif ? "none" : "";
+  $("fmtWebp").classList.toggle("on", isWebp);
+  $("quantChkRow").style.display = S.exportFmt === "apng" ? "" : "none";
   $("gifHint").style.display = isGif ? "" : "none";
-  $("exportBtn").textContent = isGif ? "导出 GIF" : "导出 APNG";
+  $("webpOptions").style.display = isWebp ? "" : "none";
+  $("exportBtn").textContent = isWebp ? "导出 WebP" : isGif ? "导出 GIF" : "导出 PNG";
   if (S.frames.length) render(S.curFrame);   // GIF 模式预览即时反映透明度二值化
 }
 
@@ -2280,7 +2492,7 @@ function encodeGIF(frames, delays, w, h){
     if (((leaves[i].est.rgba >>> 24) & 255) === 0) { transIdx = i; break; }
 
   const rgba2idx = new Map();
-  const pal = [];
+  const pal = transIdx >= 0 ? [0] : [];
   let next = transIdx >= 0 ? 1 : 0;   // 索引 0 预留给透明
   for (let i = 0; i < leaves.length; i++) {
     if (i === transIdx) continue;
@@ -2306,7 +2518,7 @@ function encodeGIF(frames, delays, w, h){
   const gifBuf = new Uint8Array(w * h * frames.length * 2 + 65536);
   const gw = new GifWriter(gifBuf, w, h, { palette: pal, loop: 0 });
   for (let i = 0; i < frames.length; i++) {
-    const opts = { delay: Math.max(1, Math.round(delays[i] / 10)), disposal: 1 };
+    const opts = { delay: Math.max(1, Math.round(delays[i] / 10)), disposal: transIdx >= 0 ? 2 : 1 };
     if (transIdx >= 0) opts.transparent = 0;
     gw.addFrame(0, 0, w, h, indexed[i], opts);
   }
@@ -2315,75 +2527,132 @@ function encodeGIF(frames, delays, w, h){
   return gifBuf.subarray(0, endPos);
 }
 
-async function exportAPNG(){
-  if (!S.frames.length) return;
-  const btn = $("exportBtn");
-  btn.disabled = true;
+/* 原生 Canvas 编码静态帧，再组装 WebP 动画容器；无外部依赖。 */
+async function encodeWebP(frames, delays, w, h, quality, loopCount){
+  const stage = document.createElement("canvas");
+  stage.width = w; stage.height = h;
+  const ctx = stage.getContext("2d");
+  if (!ctx) throw new Error("无法创建 WebP 编码画布");
+  const chunks = [];
+  let hasAlpha = false;
+  for (let i = 0; i < frames.length; i++) {
+    const rgba = new Uint8ClampedArray(frames[i]);
+    for (let p = 3; !hasAlpha && p < rgba.length; p += 4) hasAlpha = rgba[p] < 255;
+    ctx.putImageData(new ImageData(rgba, w, h), 0, 0);
+    const blob = await new Promise((resolve, reject) => {
+      stage.toBlob(result => {
+        if (!result || result.type !== "image/webp") reject(new Error("当前浏览器不支持 WebP 编码，请改用 PNG 导出"));
+        else resolve(result);
+      }, "image/webp", quality);
+    });
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    const imageChunks = parseWebP(bytes).filter(c => ["ALPH", "VP8 ", "VP8L"].includes(c.type));
+    if (!imageChunks.some(c => c.type === "VP8 " || c.type === "VP8L")) throw new Error("浏览器未返回有效的 WebP 图像");
+    if (frames.length === 1) return bytes;
+    const duration = delays[i];
+    if (!Number.isInteger(duration) || duration < 0 || duration > 0xffffff) throw new Error("帧时长超出 WebP 支持范围");
+    const header = new Uint8Array(16);
+    writeWebPU24(header, 6, w - 1); writeWebPU24(header, 9, h - 1);
+    writeWebPU24(header, 12, duration);
+    header[15] = 2; // 完整画布帧直接替换，避免透明像素累积上一帧
+    const payload = new Uint8Array(16 + imageChunks.reduce((sum, c) => sum + c.raw.length, 0));
+    payload.set(header);
+    let offset = 16;
+    for (const chunk of imageChunks) { payload.set(chunk.raw, offset); offset += chunk.raw.length; }
+    chunks.push(makeWebPChunk("ANMF", payload));
+    $("exportFill").style.width = (50 + (i + 1) / frames.length * 50).toFixed(0) + "%";
+    $("exportTxt").textContent = `正在编码 WebP ${i + 1} / ${frames.length} 帧…`;
+  }
+  const animation = new Uint8Array(6); // 透明背景
+  new DataView(animation.buffer).setUint16(4, loopCount, true);
+  return makeWebPFile([makeWebPExtendedHeader(w, h, 2 | (hasAlpha ? 16 : 0)), makeWebPChunk("ANIM", animation), ...chunks]);
+}
+
+async function exportAnimation(){
+  if (!S.frames.length || S.exporting) return;
+  const state = { ...S, comparing: false };
+  const wasPlaying = S.playing;
+  const controls = [...document.querySelectorAll("#ctrlPanel button, #ctrlPanel input, #openBtn, #playBtn")].map(el => [el, el.disabled]);
+  S.exporting = true; S.playing = false; S.comparing = false;
+  ++S.loadId; // 取消尚未完成的异步 WebP 载入，避免导出期间换帧
+  for (const [el] of controls) el.disabled = true;
   $("exportBar").style.display = "block";
-
-  gl.bindTexture(gl.TEXTURE_2D, fboTex);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, S.w, S.h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-  gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fboTex, 0);
-
-  const out = [];
   try {
-    for (let i = 0; i < S.frames.length; i++) {
+    gl.bindTexture(gl.TEXTURE_2D, fboTex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, S.w, S.h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fboTex, 0);
+    if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new Error("无法创建导出画布");
+    const out = [];
+    for (let i = 0; i < state.frames.length; i++) {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
       gl.bindTexture(gl.TEXTURE_2D, tex);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, S.w, S.h, 0, gl.RGBA, gl.UNSIGNED_BYTE, S.frames[i]);
-      gl.viewport(0, 0, S.w, S.h);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, state.w, state.h, 0, gl.RGBA, gl.UNSIGNED_BYTE, state.frames[i]);
+      gl.viewport(0, 0, state.w, state.h);
       gl.uniform1i(U.uTex, 0);
-      uniforms();
+      uniforms(state);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-      const px = new Uint8Array(S.w * S.h * 4);
-      gl.readPixels(0, 0, S.w, S.h, gl.RGBA, gl.UNSIGNED_BYTE, px);
+      const px = new Uint8Array(state.w * state.h * 4);
+      gl.readPixels(0, 0, state.w, state.h, gl.RGBA, gl.UNSIGNED_BYTE, px);
       out.push(flipRows(px).buffer);   // UPNG.encode 要求每帧为独立 ArrayBuffer
-      if (i % 8 === 7 || i === S.frames.length - 1) {
-        $("exportFill").style.width = ((i + 1) / S.frames.length * 100).toFixed(0) + "%";
-        $("exportTxt").textContent = `正在处理 ${i + 1} / ${S.frames.length} 帧…`;
+      if (i % 8 === 7 || i === state.frames.length - 1) {
+        const progress = (i + 1) / state.frames.length * (state.exportFmt === "webp" ? 50 : 100);
+        $("exportFill").style.width = progress.toFixed(0) + "%";
+        $("exportTxt").textContent = `正在处理 ${i + 1} / ${state.frames.length} 帧…`;
         await new Promise(r => setTimeout(r, 0));
       }
     }
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    let buf, mime, ext;
+    if (state.exportFmt === "webp") {
+      buf = await encodeWebP(out, state.delays, state.w, state.h, +$("webpQuality").value / 100, state.loopCount);
+      mime = "image/webp"; ext = ".webp";
+    } else if (state.exportFmt === "gif") {
+      $("exportTxt").textContent = "正在编码 GIF（256 色量化）…";
+      await new Promise(r => setTimeout(r, 20));
+      buf = encodeGIF(out, state.delays, state.w, state.h);
+      mime = "image/gif"; ext = ".gif";
+    } else {
+      $("exportTxt").textContent = "正在编码 PNG…";
+      await new Promise(r => setTimeout(r, 20));
+      const cnum = $("quantChk").checked ? 256 : 0;
+      buf = UPNG.encode(out, state.w, state.h, cnum, state.delays);
+      mime = "image/png"; ext = ".png";
+    }
+
+    const parts = [];
+    for (const [key, prefix] of [["hue", "H"], ["sat", "S"], ["val", "V"], ["contrast", "C"]]) {
+      if (state[key]) parts.push(prefix + (state[key] > 0 ? "+" : "") + state[key]);
+    }
+    const outName = state.fileName + (parts.length ? "_" + parts.join("_") : "_adjusted") + ext;
+    const url = URL.createObjectURL(new Blob([buf], { type: mime }));
+    const a = document.createElement("a");
+    a.href = url; a.download = outName;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    toast(`导出成功：${outName}（${(buf.byteLength / 1024).toFixed(0)} KB）`);
+  } catch (e) {
+    console.error(e);
+    toast("导出失败：" + e.message, true);
   } finally {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    $("exportTxt").textContent = "";
+    $("exportFill").style.width = "0%";
+    $("exportBar").style.display = "none";
+    for (const [el, disabled] of controls) el.disabled = disabled;
+    S.exporting = false; S.playing = wasPlaying;
+    S.nextTime = performance.now() + (S.delays[S.curFrame] || 33);
+    render(S.curFrame);
   }
-
-  let buf, mime, ext;
-  if (S.exportFmt === "gif") {
-    $("exportTxt").textContent = "正在编码 GIF（256 色量化）…";
-    await new Promise(r => setTimeout(r, 20));
-    buf = encodeGIF(out, S.delays, S.w, S.h);
-    mime = "image/gif"; ext = ".gif";
-  } else {
-    $("exportTxt").textContent = "正在编码 APNG…";
-    await new Promise(r => setTimeout(r, 20));
-    const cnum = $("quantChk").checked ? 256 : 0;
-    buf = UPNG.encode(out, S.w, S.h, cnum, S.delays);
-    mime = "image/png"; ext = ".png";
-  }
-
-  const parts = [];
-  if (S.hue) parts.push("H" + (S.hue > 0 ? "+" : "") + S.hue);
-  if (S.sat) parts.push("S" + (S.sat > 0 ? "+" : "") + S.sat);
-  if (S.val) parts.push("V" + (S.val > 0 ? "+" : "") + S.val);
-  const outName = S.fileName + (parts.length ? "_" + parts.join("_") : "_adjusted") + ext;
-
-  const url = URL.createObjectURL(new Blob([buf], { type: mime }));
-  const a = document.createElement("a");
-  a.href = url; a.download = outName;
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 4000);
-
-  $("exportTxt").textContent = "";
-  $("exportBar").style.display = "none";
-  btn.disabled = false;
-  toast(`导出成功：${outName}（${(buf.byteLength / 1024).toFixed(0)} KB）`);
 }
 
 /* ================= 事件绑定 ================= */
 function bind(){
   const fi = $("fileInput");
-  $("openBtn").onclick = () => fi.click();
+  $("openBtn").onclick = () => {
+    if (document.body.classList.contains("loaded")) returnToUpload();
+    else fi.click();
+  };
   $("dropzone").onclick = () => fi.click();
   fi.onchange = () => { loadFile(fi.files[0]); fi.value = ""; };
 
@@ -2396,7 +2665,7 @@ function bind(){
     loadFile(e.dataTransfer.files[0]);
   });
 
-  for (const key of ["hue", "sat", "val"]) {
+  for (const key of ["hue", "sat", "val", "contrast"]) {
     $(key + "Slider").addEventListener("input", e => {
       S[key] = +e.target.value;
       refreshLabels();
@@ -2404,10 +2673,12 @@ function bind(){
     });
   }
 
-  $("resetBtn").onclick = () => { setParam("hue", 0); setParam("sat", 0); setParam("val", 0); };
+  $("resetBtn").onclick = () => {
+    for (const key of ["hue", "sat", "val", "contrast"]) setParam(key, 0);
+  };
 
   const cmp = $("compareBtn");
-  const cmpOn  = e => { e.preventDefault(); if (!S.comparing) { S.comparing = true;  render(S.curFrame); } };
+  const cmpOn  = e => { e.preventDefault(); if (!S.exporting && !S.comparing) { S.comparing = true;  render(S.curFrame); } };
   const cmpOff = () => { if (S.comparing)  { S.comparing = false; render(S.curFrame); } };
   cmp.addEventListener("mousedown", cmpOn);
   cmp.addEventListener("touchstart", cmpOn, { passive: false });
@@ -2416,9 +2687,11 @@ function bind(){
 
   $("playBtn").onclick = togglePlay;
   canvas.onclick = togglePlay;
-  $("exportBtn").onclick = exportAPNG;
+  $("exportBtn").onclick = exportAnimation;
   $("fmtApng").onclick = () => { S.exportFmt = "apng"; refreshExportUI(); };
   $("fmtGif").onclick = () => { S.exportFmt = "gif"; refreshExportUI(); };
+  $("fmtWebp").onclick = () => { S.exportFmt = "webp"; refreshExportUI(); };
+  $("webpQuality").addEventListener("input", e => { $("webpQualityVal").textContent = e.target.value + "%"; });
 }
 
 /* ================= 启动 ================= */
